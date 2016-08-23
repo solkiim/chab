@@ -1,11 +1,12 @@
 require 'net/http'
 require 'uri'
 require 'json'
+require_relative 'string.rb'
 
 # instance setup
 @no_chicken_anywhere = true	#tragic... :'(
 @date_info = ["month", "day", "year"]
-@non_menu_info = @date_info.concat(["eatery", "start_hour", "start_minute", "end_hour", "end_minute"])
+@non_menu_info = @date_info + ["eatery", "start_hour", "start_minute", "end_hour", "end_minute", "meal"]
 
 # API setup
 @client_id = "56a6aeeb-cd4a-4a7e-bb42-c84a15b80155"
@@ -14,13 +15,12 @@ require 'json'
 # do once for each supported eatery
 ["ratty", "vdub"].each do |eatery|
 	# get all menus for the day through dining API
-	params = { :client_id => @client_id, :eatery => eatery, :year => 2016, :month => 4, :day => 3 }
+	params = { :client_id => @client_id, :eatery => eatery, :year => 2016, :month => 4, :day => 8 }
 	@uri.query = URI.encode_www_form(params)
 	res = Net::HTTP.get_response(@uri)
 
 	# if menu is available
 	if res.is_a?(Net::HTTPSuccess)
-		@no_chicken_anywhere = false
 		# puts res.body
 		menu_response = JSON.parse(res.body)
 
@@ -29,13 +29,14 @@ require 'json'
 			@date_info[index] = menu_response["menus"][0][date_part]
 		end
 		puts @date_info.join("/")
-
+		
 		# print eatery name
-		puts "#{eatery.upcase}:"
+		puts "#{eatery.upcase}:".bg_cyan.bold
 		
 		menu_response["menus"].each do |menu|
 			# print operation time info
-			puts "#{start_hour}:#{start_minute} - #{end_hour}:#{end_minute}"
+			puts "#{menu["meal"]}"
+			puts "#{menu["start_hour"]}:#{menu["start_minute"]}-#{menu["end_hour"]}:#{menu["end_minute"]}"
 			
 			# delete all non-menu info
 			@non_menu_info.each do |info|
@@ -43,12 +44,19 @@ require 'json'
 			end
 			
 			# iterate through menu sections
-			menu.each do |key, val_array|
+			menu.each do |key, entree_array|
 				puts "#{key}-----"
-				puts val_array
+				entree_array.each do |entree|
+					if entree.include? "chicken"
+						@no_chicken_anywhere = false
+						puts "\t🍗  #{entree}"
+					end
+				end
 			end
+			puts ""
 		end
 	end
+	puts ""
 end
 
 if @no_chicken_anywhere
